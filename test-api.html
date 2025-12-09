@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Тест API ключа Gemini</title>
+    <script src="https://cdn.jsdelivr.net/npm/@google/generative-ai@0.21.0/dist/index.umd.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 50px auto; padding: 20px; }
+        .result { margin: 20px 0; padding: 15px; border-radius: 8px; }
+        .success { background-color: #d4edda; border: 1px solid #c3e6cb; color: #155724; }
+        .error { background-color: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; }
+        .info { background-color: #d1ecf1; border: 1px solid #bee5eb; color: #0c5460; }
+        button { background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        #loading { display: none; }
+    </style>
+</head>
+<body>
+    <h1>🔍 Тест API ключа Google Gemini</h1>
+    
+    <div class="info">
+        <p><strong>Статус:</strong> <span id="status">Готов к тестированию</span></p>
+        <p><strong>API ключ:</strong> <span id="apiKey">Не найден</span></p>
+    </div>
+    
+    <button onclick="testAPI()">🧪 Тестировать API</button>
+    <div id="loading">⏳ Тестирование API...</div>
+    
+    <div id="result"></div>
+
+    <script>
+        // Тестовый API ключ из public/index.html
+        window.GEMINI_API_KEY = "AIzaSyB21nbBLKKO1vBhlbY6ULnLeuLz7uniBXQ";
+        
+        // Проверяем доступность API ключа
+        const apiKey = window.GEMINI_API_KEY || 'Не найден';
+        document.getElementById('apiKey').textContent = apiKey ? 
+            apiKey.substring(0, 10) + '...' + apiKey.substring(-4) : 
+            'Не найден';
+        
+        async function testAPI() {
+            const resultDiv = document.getElementById('result');
+            const loadingDiv = document.getElementById('loading');
+            const statusSpan = document.getElementById('status');
+            
+            resultDiv.innerHTML = '';
+            loadingDiv.style.display = 'block';
+            statusSpan.textContent = 'Тестирование...';
+            
+            try {
+                if (!apiKey || apiKey === 'Не найден') {
+                    throw new Error('API ключ не найден в переменных окружения');
+                }
+                
+                const ai = new GoogleGenerativeAI(apiKey);
+                const model = ai.getGenerativeModel({ model: "gemini-2.5-flash" });
+                
+                const result = await model.generateContent("Привет! Скажи 'API работает корректно' если можешь прочитать это сообщение.");
+                const response = await result.response;
+                const text = response.text();
+                
+                resultDiv.innerHTML = `
+                    <div class="success">
+                        <h3>✅ Успех! API ключ работает</h3>
+                        <p><strong>Ответ модели:</strong> ${text}</p>
+                        <p><strong>Рекомендация:</strong> Если у вас все еще возникают ошибки в приложении, проблема может быть в другом месте.</p>
+                    </div>
+                `;
+                statusSpan.textContent = 'API работает';
+                
+            } catch (error) {
+                console.error('Ошибка тестирования API:', error);
+                
+                let solution = '';
+                if (error.message.includes('API key')) {
+                    solution = `
+                        <h4>🔧 Возможные решения:</h4>
+                        <ol>
+                            <li>Проверьте правильность API ключа в <a href="https://aistudio.google.com/app/apikey" target="_blank">Google AI Studio</a></li>
+                            <li>Убедитесь, что API ключ активен и не истек</li>
+                            <li>Проверьте квоты и лимиты использования в Google Cloud Console</li>
+                            <li>Создайте новый API ключ в Google Cloud Console</li>
+                            <li>Убедитесь, что включены нужные API (Generative Language API)</li>
+                        </ol>
+                    `;
+                }
+                
+                resultDiv.innerHTML = `
+                    <div class="error">
+                        <h3>❌ Ошибка API ключа</h3>
+                        <p><strong>Сообщение:</strong> ${error.message}</p>
+                        ${solution}
+                    </div>
+                `;
+                statusSpan.textContent = 'Ошибка API';
+            } finally {
+                loadingDiv.style.display = 'none';
+            }
+        }
+    </script>
+</body>
+</html>
