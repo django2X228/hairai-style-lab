@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🧪 Тест API ключа Gemini</title>
+    <script src="https://cdn.jsdelivr.net/npm/@google/generative-ai@0.21.0/dist/index.umd.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 20px auto; padding: 20px; }
+        .test { margin: 15px 0; padding: 15px; border-radius: 8px; border-left: 4px solid #ccc; }
+        .success { background: #d4edda; border-color: #28a745; }
+        .error { background: #f8d7da; border-color: #dc3545; }
+        .info { background: #d1ecf1; border-color: #17a2b8; }
+        button { background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; margin: 5px; }
+        button:hover { background: #0056b3; }
+        .log { background: #f8f9fa; padding: 10px; border-radius: 5px; font-family: monospace; font-size: 12px; max-height: 200px; overflow-y: auto; }
+    </style>
+</head>
+<body>
+    <h1>🧪 Тест API ключа Google Gemini</h1>
+    
+    <div class="test info">
+        <h3>📋 Инструкция:</h3>
+        <ol>
+            <li><strong>Откройте эту страницу через VPN</strong> (США/Европа)</li>
+            <li>Нажмите "Запустить тесты"</li>
+            <li>Посмотрите результаты ниже</li>
+        </ol>
+    </div>
+
+    <div>
+        <button onclick="runTests()">🚀 Запустить тесты</button>
+        <button onclick="clearLog()">🗑️ Очистить лог</button>
+    </div>
+
+    <div id="results"></div>
+    <div id="log" class="log" style="display: none; margin-top: 15px;"></div>
+
+    <script>
+        function addLog(message, type = 'info') {
+            const logDiv = document.getElementById('log');
+            logDiv.style.display = 'block';
+            const timestamp = new Date().toLocaleTimeString();
+            logDiv.innerHTML += `[${timestamp}] ${message}<br>`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        function clearLog() {
+            document.getElementById('log').innerHTML = '';
+        }
+
+        async function runTests() {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '<div class="test info">⏳ Запуск тестов...</div>';
+            clearLog();
+            
+            // Ключ из window.GEMINI_API_KEY (тот же, что использует приложение)
+            const apiKey = window.GEMINI_API_KEY;
+            
+            if (!apiKey) {
+                resultsDiv.innerHTML = '<div class="test error">❌ API ключ не найден в window.GEMINI_API_KEY</div>';
+                addLog('❌ API ключ не найден в window.GEMINI_API_KEY');
+                return;
+            }
+            
+            addLog(`🔑 Ключ: ${apiKey.substring(0, 15)}...${apiKey.substring(-4)}`);
+            
+            try {
+                addLog('⏳ Инициализация Google Generative AI...');
+                const ai = new GoogleGenerativeAI(apiKey);
+                
+                // Тест 1: Простой текстовый запрос
+                addLog('⏳ Тест 1: Простой запрос...');
+                const model = ai.getGenerativeModel({ model: "gemini-2.5-flash" });
+                
+                const result = await model.generateContent("Привет! Скажи 'Тест прошел успешно'.");
+                const response = await result.response;
+                const text = response.text();
+                
+                addLog(`✅ Тест 1: ${text}`);
+                
+                // Тест 2: Проверка безопасности
+                if (response.promptFeedback) {
+                    addLog('⚠️ Обнаружена обратная связь по безопасности');
+                }
+                
+                // Тест 3: Проверка лимитов
+                addLog('⏳ Тест 3: Проверка лимитов...');
+                const candidates = response.candidates || [];
+                addLog(`✅ Тест 3: Получено ${candidates.length} кандидатов`);
+                
+                resultsDiv.innerHTML = `
+                    <div class="test success">
+                        <h3>🎉 Успех! API ключ работает</h3>
+                        <p><strong>Ответ модели:</strong> ${text}</p>
+                        <p><strong>Статус:</strong> Все тесты пройдены</p>
+                        <p><strong>Заключение:</strong> Ключ валиден. Проблема может быть в другом месте приложения.</p>
+                    </div>
+                `;
+                
+            } catch (error) {
+                console.error('Ошибка теста:', error);
+                
+                let errorType = '';
+                let solutions = '';
+                
+                if (error.message.includes('API key not valid')) {
+                    errorType = '❌ Ключ недействителен';
+                    solutions = `
+                        <h4>🔧 Решения:</h4>
+                        <ol>
+                            <li>Создайте новый ключ в <a href="https://aistudio.google.com/app/apikey" target="_blank">Google AI Studio</a></li>
+                            <li>Убедитесь, что скопировали ключ полностью</li>
+                            <li>Проверьте, что ключ не истек</li>
+                            <li>Проверьте квоты в Google Cloud Console</li>
+                        </ol>
+                    `;
+                } else if (error.message.includes('User location')) {
+                    errorType = '🌍 Региональные ограничения';
+                    solutions = `
+                        <h4>🔧 Решения:</h4>
+                        <ol>
+                            <li>Убедитесь, что используете VPN (США/Европа)</li>
+                            <li>Очистите кэш браузера</li>
+                            <li>Попробуйте другой VPN сервер</li>
+                        </ol>
+                    `;
+                } else {
+                    errorType = '❌ Неизвестная ошибка';
+                    solutions = `<p><strong>Детали ошибки:</strong> ${error.message}</p>`;
+                }
+                
+                addLog(`❌ ${errorType}: ${error.message}`);
+                
+                resultsDiv.innerHTML = `
+                    <div class="test error">
+                        <h3>${errorType}</h3>
+                        <p><strong>Сообщение:</strong> ${error.message}</p>
+                        ${solutions}
+                    </div>
+                `;
+            }
+        }
+    </script>
+</body>
+</html>
